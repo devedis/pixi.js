@@ -205,9 +205,10 @@ export class TextMetrics
         let width = 0;
         let line = '';
         let lines = '';
+        let lineCount = 1;
 
         const cache: CharacterWidthCache = Object.create(null);
-        const { letterSpacing, whiteSpace } = style;
+        const { letterSpacing, whiteSpace, maxLineCount } = style;
 
         // How to handle whitespaces
         const collapseSpaces = TextMetrics.collapseSpaces(whiteSpace);
@@ -229,6 +230,12 @@ export class TextMetrics
 
         for (let i = 0; i < tokens.length; i++)
         {
+            // if ellipsis should be added and stopped
+            if (maxLineCount && lineCount > maxLineCount)
+            {
+                return TextMetrics.makeEllipsis(lines, style, cache, context);
+            }
+
             // get the word, space or newlineChar
             let token = tokens[i];
 
@@ -239,6 +246,7 @@ export class TextMetrics
                 if (!collapseNewlines)
                 {
                     lines += TextMetrics.addLine(line);
+                    lineCount++;
                     canPrependSpaces = !collapseSpaces;
                     line = '';
                     width = 0;
@@ -274,6 +282,7 @@ export class TextMetrics
                 {
                     // start newlines for overflow words
                     lines += TextMetrics.addLine(line);
+                    lineCount++;
                     line = '';
                     width = 0;
                 }
@@ -318,6 +327,7 @@ export class TextMetrics
                         if (characterWidth + width > wordWrapWidth)
                         {
                             lines += TextMetrics.addLine(line);
+                            lineCount++;
                             canPrependSpaces = false;
                             line = '';
                             width = 0;
@@ -336,6 +346,7 @@ export class TextMetrics
                     if (line.length > 0)
                     {
                         lines += TextMetrics.addLine(line);
+                        lineCount++;
                         line = '';
                         width = 0;
                     }
@@ -344,6 +355,7 @@ export class TextMetrics
 
                     // give it its own line if it's not the end
                     lines += TextMetrics.addLine(token, !isLastToken);
+                    lineCount++;
                     canPrependSpaces = false;
                     line = '';
                     width = 0;
@@ -362,6 +374,7 @@ export class TextMetrics
 
                     // add a new line
                     lines += TextMetrics.addLine(line);
+                    lineCount++;
 
                     // start a new line
                     line = '';
@@ -742,6 +755,71 @@ export class TextMetrics
         {
             TextMetrics._fonts = {};
         }
+    }
+
+    /**
+     * Remove as many tokens as needed on the last line to fit the ellipsis (and trim whitespace before ellipsis)
+     * Optionally break in the middle of words if {style.breakWordsEllipsis} is set
+     * If not ellpsis is set, just cut the lines to {style.maxLineCount}
+     * @param lines
+     * @param style
+     * @param cache
+     * @param context
+     * @return {string} concatenated lines
+     */
+    public static makeEllipsis(
+        lines: string, style: TextStyle, cache: CharacterWidthCache,
+        context: CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D): string
+    {
+        const { ellipsis, maxLineCount, letterSpacing, breakWordsEllipsis } = style;
+        const wordWrapWidth = style.wordWrapWidth + letterSpacing;
+
+        const splittedLines = lines.replace(/(\r\n|\r|\n)$/, '').split(/(?:\r\n|\r|\n)/);
+
+        if (!ellipsis)
+        {
+            return splittedLines.slice(0, maxLineCount).join('\n');
+        }
+
+        let lastLine = splittedLines[maxLineCount - 1];
+        let lastLineWidth = Number.MAX_VALUE;
+
+        // calculate the length of the ellipsis
+        const ellipsisLength = TextMetrics.wordWrapSplit(ellipsis).map((e) =>
+            TextMetrics.getFromCache(e, letterSpacing, cache, context)).reduce((acc, val) => acc + val);
+
+        let lastLineTokens = TextMetrics.tokenize(lastLine);
+
+        const isLineTooLong = () => lastLineWidth + ellipsisLength > wordWrapWidth;
+
+        // as long as the last line is too long with ellipsis, cut tokens
+        while (isLineTooLong())
+        {
+            lastLineWidth = lastLineTokens.reduce((acc, val) => acc.concat(
+                TextMetrics.wordWrapSplit(val).map((y) => TextMetrics.getFromCache(y, letterSpacing, cache, context))), [])
+                .reduce((acc: number, val: number) => acc + val, 0);
+
+            if (isLineTooLong())
+            {
+                const token = lastLineTokens[lastLineTokens.length - 1];
+
+                lastLineTokens = lastLineTokens.slice(0, lastLineTokens.length - 1);
+
+                // if enabled break in the middle of words
+                if (TextMetrics.canBreakWords(token, breakWordsEllipsis))
+                {
+                    // remove one character and add it back to the token list
+                    lastLineTokens.push(token.slice(0, -1));
+                }
+            }
+        }
+
+        lastLine = TextMetrics.trimRight(lastLineTokens.join(''));
+
+        lines = splittedLines.slice(0, maxLineCount - 1).join('\n')
+            + (lastLineWidth > 0 && maxLineCount > 1 ? '\n' : '') + lastLine + ellipsis;
+
+        return lines;
     }
 }
 

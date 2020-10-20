@@ -679,4 +679,75 @@ describe('PIXI.TextMetrics', function ()
             expect(metrics.lines[1]).to.equal('9999------');
         });
     });
+
+    describe('wordWrap with maxLineCount', function ()
+    {
+        it('width should not be greater than wordWrapWidth with longText', function ()
+        {
+            const style = Object.assign({}, defaultStyle, { breakWords: true });
+
+            const metrics = TextMetrics.measureText(longText, new TextStyle(style));
+
+            expect(metrics.width).to.be.below(style.wordWrapWidth);
+
+            metrics.lines.forEach((line) =>
+            {
+                expect(line[0]).to.not.equal(' ', 'should not have space at the start');
+                expect(line[line - 1]).to.not.equal(' ', 'should not have space at the end');
+            });
+        });
+
+        it('lineCount should not be longer than maxLineCount', function ()
+        {
+            const style = Object.assign({}, defaultStyle, { breakWords: true, maxLineCount: 2 });
+
+            const metrics = TextMetrics.measureText(longText, new TextStyle(style));
+
+            expect(metrics.lines.length).to.be.equal(2);
+
+            metrics.lines.forEach((line) =>
+            {
+                expect(line[0]).to.not.equal(' ', 'should not have space at the start');
+                expect(line[line - 1]).to.not.equal(' ', 'should not have space at the end');
+            });
+        });
+    });
+
+    describe('wordWrap with maxLineCount and ellipsis', function ()
+    {
+        it('lineCount should not be longer than maxLineCount with ellipsis', function ()
+        {
+            const style = Object.assign({}, defaultStyle, { breakWords: true, maxLineCount: 2, ellipsis: '...' });
+
+            const metrics = TextMetrics.measureText(longText, new TextStyle(style));
+
+            expect(metrics.lines.length).to.be.equal(2);
+
+            metrics.lines.forEach((line) =>
+            {
+                expect(line[0]).to.not.equal(' ', 'should not have space at the start');
+                expect(line[line - 1]).to.not.equal(' ', 'should not have space at the end');
+            });
+
+            expect(metrics.lines[metrics.lines.length - 1].endsWith(style.ellipsis)).to.be.equal(true, 'should have ellipsis at the end');
+        });
+
+        it('last word should break for adding ellipsis if breakWordsEllipsis is set', function ()
+        {
+            const style = Object.assign({}, defaultStyle, { breakWords: true, maxLineCount: 4, ellipsis: '...', breakWordsEllipsis: true });
+
+            const metrics = TextMetrics.measureText(breakingWordText, new TextStyle(style));
+
+            expect(metrics.lines.length).to.be.equal(4);
+
+            metrics.lines.forEach((line) =>
+            {
+                expect(line[0]).to.not.equal(' ', 'should not have space at the start');
+                expect(line[line - 1]).to.not.equal(' ', 'should not have space at the end');
+            });
+
+            expect(metrics.lines[metrics.lines.length - 1].endsWith(style.ellipsis)).to.be.equal(true, 'should have ellipsis at the end');
+            expect(metrics.lines[metrics.lines.length - 1].endsWith(`Engine. Crea${style.ellipsis}`)).to.be.equal(true, 'should break last word');
+        });
+    });
 });
