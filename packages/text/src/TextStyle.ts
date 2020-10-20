@@ -16,12 +16,14 @@ export type TextStyleWhiteSpace = 'normal'|'pre'|'pre-line';
 export interface ITextStyle {
     align: TextStyleAlign;
     breakWords: boolean;
+    breakWordsEllipsis: boolean;
     dropShadow: boolean;
     dropShadowAlpha: number;
     dropShadowAngle: number;
     dropShadowBlur: number;
     dropShadowColor: string|number;
     dropShadowDistance: number;
+    ellipsis: string;
     fill: TextStyleFill;
     fillGradientType: TEXT_GRADIENT;
     fillGradientStops: number[];
@@ -33,6 +35,7 @@ export interface ITextStyle {
     letterSpacing: number;
     lineHeight: number;
     lineJoin: TextStyleLineJoin;
+    maxLineCount: number;
     miterLimit: number;
     padding: number;
     stroke: string|number;
@@ -43,17 +46,20 @@ export interface ITextStyle {
     wordWrap: boolean;
     wordWrapWidth: number;
     leading: number;
+
 }
 
 const defaultStyle: ITextStyle = {
     align: 'left',
     breakWords: false,
+    breakWordsEllipsis: false,
     dropShadow: false,
     dropShadowAlpha: 1,
     dropShadowAngle: Math.PI / 6,
     dropShadowBlur: 0,
     dropShadowColor: 'black',
     dropShadowDistance: 5,
+    ellipsis: undefined,
     fill: 'black',
     fillGradientType: TEXT_GRADIENT.LINEAR_VERTICAL,
     fillGradientStops: [],
@@ -65,6 +71,7 @@ const defaultStyle: ITextStyle = {
     letterSpacing: 0,
     lineHeight: 0,
     lineJoin: 'miter',
+    maxLineCount: 0,
     miterLimit: 10,
     padding: 0,
     stroke: 'black',
@@ -102,12 +109,14 @@ export class TextStyle implements ITextStyle
 
     protected _align: TextStyleAlign;
     protected _breakWords: boolean;
+    protected _breakWordsEllipsis: boolean;
     protected _dropShadow: boolean;
     protected _dropShadowAlpha: number;
     protected _dropShadowAngle: number;
     protected _dropShadowBlur: number;
     protected _dropShadowColor: string|number;
     protected _dropShadowDistance: number;
+    protected _ellipsis: string;
     protected _fill: TextStyleFill;
     protected _fillGradientType: TEXT_GRADIENT;
     protected _fillGradientStops: number[];
@@ -119,6 +128,7 @@ export class TextStyle implements ITextStyle
     protected _letterSpacing: number;
     protected _lineHeight: number;
     protected _lineJoin: TextStyleLineJoin;
+    protected _maxLineCount: number;
     protected _miterLimit: number;
     protected _padding: number;
     protected _stroke: string|number;
@@ -136,12 +146,15 @@ export class TextStyle implements ITextStyle
      *  does not affect single line text
      * @param {boolean} [style.breakWords=false] - Indicates if lines can be wrapped within words, it
      *  needs wordWrap to be set to true
+     * @param {boolean} [style.breakWordsEllipsis] - Break words when adding ellipsis, need wordWrap to be set to true
      * @param {boolean} [style.dropShadow=false] - Set a drop shadow for the text
      * @param {number} [style.dropShadowAlpha=1] - Set alpha for the drop shadow
      * @param {number} [style.dropShadowAngle=Math.PI/6] - Set a angle of the drop shadow
      * @param {number} [style.dropShadowBlur=0] - Set a shadow blur radius
      * @param {string|number} [style.dropShadowColor='black'] - A fill style to be used on the dropshadow e.g 'red', '#00FF00'
      * @param {number} [style.dropShadowDistance=5] - Set a distance of the drop shadow
+     * @param {string} [style.ellipsis] - If ellipsis and {style.maxLineCount} is set, will be added to the last line.
+     *  needs wordWrap to be set to true
      * @param {string|string[]|number|number[]|CanvasGradient|CanvasPattern} [style.fill='black'] - A canvas
      *  fillstyle that will be used on the text e.g 'red', '#00FF00'. Can be an array to create a gradient
      *  eg ['#000000','#FFFFFF']
@@ -163,6 +176,8 @@ export class TextStyle implements ITextStyle
      * @param {string} [style.lineJoin='miter'] - The lineJoin property sets the type of corner created, it can resolve
      *      spiked text issues. Possible values "miter" (creates a sharp corner), "round" (creates a round corner) or "bevel"
      *      (creates a squared corner).
+     * @param {number} [style.maxLineCount] - Once the text line count hits "maxLineCount", instead of wrapping to the
+     *      next line, it should terminate at that line count. It needs wordWrap to be set to true
      * @param {number} [style.miterLimit=10] - The miter limit to use when using the 'miter' lineJoin mode. This can reduce
      *      or increase the spikiness of rendered text.
      * @param {number} [style.padding=0] - Occasionally some fonts are cropped. Adding some padding will prevent this from
@@ -759,6 +774,60 @@ export class TextStyle implements ITextStyle
         if (this._wordWrapWidth !== wordWrapWidth)
         {
             this._wordWrapWidth = wordWrapWidth;
+            this.styleID++;
+        }
+    }
+
+    /**
+     * set ellipsis string
+     *
+     * @member {string}
+     */
+    get ellipsis(): string
+    {
+        return this._ellipsis;
+    }
+    set ellipsis(ellipsis: string)
+    {
+        if (this._ellipsis !== ellipsis)
+        {
+            this._ellipsis = ellipsis;
+            this.styleID++;
+        }
+    }
+
+    /**
+     * Set max line count for ellipsis
+     *
+     * @member {number}
+     */
+    get maxLineCount(): number
+    {
+        return this._maxLineCount;
+    }
+    set maxLineCount(maxLineCount: number)
+    {
+        if (this._maxLineCount !== maxLineCount)
+        {
+            this._maxLineCount = maxLineCount;
+            this.styleID++;
+        }
+    }
+
+    /**
+     * Indicates if it should break words when adding ellipsis
+     *
+     * @member {boolean}
+     */
+    get breakWordsEllipsis(): boolean
+    {
+        return this._breakWordsEllipsis;
+    }
+    set breakWordsEllipsis(breakWordsEllipsis: boolean)
+    {
+        if (this._breakWordsEllipsis !== breakWordsEllipsis)
+        {
+            this._breakWordsEllipsis = breakWordsEllipsis;
             this.styleID++;
         }
     }
